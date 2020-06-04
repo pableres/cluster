@@ -1,0 +1,75 @@
+#Cargar y utilizar función IPAK
+#ver vídeo https://www.youtube.com/watch?v=UjQz9SxG9rk
+ipak <- function(pkg){
+  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+  if (length(new.pkg)) 
+    install.packages(new.pkg, dependencies = TRUE)
+  sapply(pkg, require, character.only = TRUE)
+}
+
+packages <- c("fpc","NbClust","cluster","factoextra","tidyr")
+ipak(packages)
+
+#cargar la base de datos y estandarizarla
+data("USArrests")      
+df <- scale(USArrests) 
+head(df)   
+
+#calcular la matriz de distancia
+m.distancia <- get_dist(df, method = "kendall") #el método aceptado también puede ser: "maximum", "manhattan", "canberra", "binary", "minkowski", "pearson", "spearman" o "kendall"
+fviz_dist(m.distancia, gradient = list(low = "blue", mid = "white", high = "red"))
+
+#estimar el número de clústers
+#Elbow, silhouette o gap_stat method
+fviz_nbclust(df, pam, method = "wss")
+fviz_nbclust(df, pam, method = "silhouette")
+fviz_nbclust(df, pam, method = "gap_stat")
+
+#con esta función se pueden calcular:
+#the index to be calculated. This should be one of : "kl", "ch", "hartigan", "ccc", "scott",
+#"marriot", "trcovw", "tracew", "friedman", "rubin", "cindex", "db", "silhouette", "duda",
+#"pseudot2", "beale", "ratkowsky", "ball", "ptbiserial", "gap", "frey", "mcclain", "gamma",
+#"gplus", "tau", "dunn", "hubert", "sdindex", "dindex", "sdbw", "all" (all indices except GAP,
+#Gamma, Gplus and Tau), "alllong" (all indices with Gap, Gamma, Gplus and Tau included).
+resnumclust<-NbClust(df, distance = "euclidean", min.nc=2, max.nc=10, method = "median", index = "alllong")
+resnumclust
+fviz_nbclust(resnumclust)
+
+#calculamos los dos clústers
+pam9 <- pam(df, 9)
+print(pam9)
+pam2 <- pam(df, 2)
+print(pam2)
+
+#probamos algunas visualizaciones
+fviz_cluster(pam2, data = df, ellipse.type = "norm")
+fviz_cluster(pam9, data = df)
+
+res9 <- hcut(df, k = 9, stand = TRUE, method = "median")
+fviz_dend(res9, rect = TRUE, cex = 0.5,
+          k_colors = "simpsons")
+
+#le pedimos un pequeño resumen 
+USArrests %>%
+  mutate(Cluster = pam9$clustering) %>%
+  group_by(Cluster) %>%
+  summarise_all("mean")
+
+#lo pegamos en nuestro data frame y lo dibujamos ;)
+df <- USArrests
+df
+df <- scale(USArrests)
+df
+df<- as.data.frame(df)
+df
+df$clus<-as.factor(pam9$clustering)
+df
+
+df$clus<-factor(df$clus)
+data_long <- gather(df, caracteristica, valor, Murder:Rape, factor_key=TRUE)
+data_long
+
+ggplot(data_long, aes(as.factor(x = caracteristica), y = valor,group=clus, colour = clus)) + 
+  stat_summary(fun = mean, geom="pointrange", size = 1, aes(shape = clus))+
+  stat_summary(geom="line")
+  #geom_point(aes(shape=clus))
