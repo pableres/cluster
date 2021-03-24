@@ -1,0 +1,85 @@
+#Cluster de superhéroes.
+#https://github.com/cosmoduende/r-marvel-vs-dc
+
+df <- read_excel("C:/Users/pable/Desktop/You tube/Marvel-DC/base datos.xlsx")
+df<-as.data.frame(df)
+View(df)
+df <- subset(df, select = -c(Alignment,Total))
+View(df)
+
+install.packages("textshape")
+library(textshape)
+df<-textshape::column_to_rownames(df, loc = 1)
+df<- df[!duplicated(df$Name), ]
+df1<-textshape::column_to_rownames(df, loc = 1)
+df2<-textshape::column_to_rownames(df, loc = 1)
+df<-textshape::column_to_rownames(df, loc = 1)
+
+ipak <- function(pkg){
+  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+  if (length(new.pkg)) 
+    install.packages(new.pkg, dependencies = TRUE)
+  sapply(pkg, require, character.only = TRUE)
+}
+
+packages <- c("tibble","tidyverse","cluster", "factoextra","NbClust","tidyr")
+ipak(packages)
+
+#no tengo necesidad de estandarizar las medidas
+#df <- scale(df)
+
+fviz_nbclust(df, kmeans, method = "wss")
+fviz_nbclust(df, kmeans, method = "silhouette")
+fviz_nbclust(df, kmeans, method = "gap_stat")
+
+resnumclust<-NbClust(df, distance = "euclidean", min.nc=2, max.nc=10, method = "kmeans", index = "alllong")
+fviz_nbclust(resnumclust)
+
+k3 <- kmeans(df, centers = 3, nstart = 25)
+k3
+str(k3)
+
+k5 <- kmeans(df, centers = 5, nstart = 25)
+k10 <- kmeans(df, centers = 10, nstart = 25)
+
+
+fviz_cluster(k3, data = df)
+fviz_cluster(k3, data = df, ellipse.type = "euclid",repel = FALSE,star.plot = TRUE) #ellipse.type= "t", "norm", "euclid"
+fviz_cluster(k3, data = df, ellipse.type = "norm")
+fviz_cluster(k3, data = df, ellipse.type = "norm",palette = "Set2", ggtheme = theme_minimal())
+
+
+df$clus<-as.factor(k3$cluster)
+df
+
+df$clus<-factor(df$clus)
+data_long <- gather(df, caracteristica, valor, Intelligence:Combat, factor_key=TRUE)
+data_long
+
+ggplot(data_long, aes(as.factor(x = caracteristica), y = valor,group=clus, colour = clus)) + 
+  stat_summary(fun = mean, geom="pointrange", size = 1)+
+  stat_summary(geom="line")
+#geom_point(aes(shape=clus))
+
+
+df1$clus<-as.factor(k5$cluster)
+df1
+
+df1$clus<-factor(df1$clus)
+data_long1 <- gather(df1, caracteristica, valor, Intelligence:Combat, factor_key=TRUE)
+data_long1
+
+ggplot(data_long1, aes(as.factor(x = caracteristica), y = valor,group=clus, colour = clus)) + 
+  stat_summary(fun = mean, geom="pointrange", size = 1)+
+  stat_summary(geom="line")
+
+df2$clus<-as.factor(k10$cluster)
+df2
+
+df2$clus<-factor(df2$clus)
+data_long2 <- gather(df2, caracteristica, valor, Intelligence:Combat, factor_key=TRUE)
+data_long2
+
+ggplot(data_long2, aes(as.factor(x = caracteristica), y = valor,group=clus, colour = clus)) + 
+  stat_summary(fun = mean, geom="pointrange", size = 1)+
+  stat_summary(geom="line")
